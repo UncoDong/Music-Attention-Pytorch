@@ -37,6 +37,7 @@ def getLabel():
         label[x]=one_hot(y)
     return label
 
+#得到note和num字典
 def getDict():
     note_dic = {}
     note = ['<S>','<E>','C4', 'C4#', 'D4', 'D4#', 'E4', 'F4', 'F4#', 'G4',
@@ -63,6 +64,9 @@ def one_hot(y):
     note.append(note_dic['<E>'])
     return note
 
+#会调用前面的函数，最后返回训练集的数据
+#形状为（x_train,y_train)，x_train是训练集音频数据，y_train是训练集数据标签
+#数据类型均为torch.longtensor
 def getPair():
     x=getData()
     y=getLabel()
@@ -70,7 +74,7 @@ def getPair():
     label=[]
     for key in x.keys():
         a=x[key]
-        a=list(a)[100:140]#[random.randint(100,120):random.randint(120,140)]
+        a=list(a)#[random.randint(100,120):random.randint(120,140)]
         a=torch.Tensor(a).view(len(a),1).long()
         b=torch.Tensor(y[key]).view(len(y[key]),1).long()
         data.append(a)
@@ -78,12 +82,15 @@ def getPair():
     return data,label
 
 
+
+#获取数据和字典
 x_train, y_train = getPair()
 MAX_LENGTH = max([i.shape[0] for i in x_train])
-note_dic,num_dic=getDict()
-S_token=0
-E_token=1
+note_dic,num_dic=getDict()#得到字典
+S_token=0#代表句子的开始
+E_token=1#代表句子的结束
 
+#不要动它
 class EncoderRNN(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(EncoderRNN, self).__init__()
@@ -102,6 +109,7 @@ class EncoderRNN(nn.Module):
     def initHidden(self):
         return torch.zeros(1, 1, self.hidden_size, device=device)
 
+#不要动它
 class AttnDecoderRNN(nn.Module):
     def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
         super(AttnDecoderRNN, self).__init__()
@@ -138,7 +146,7 @@ class AttnDecoderRNN(nn.Module):
     def initHidden(self):
         return torch.zeros(1, 1, self.hidden_size, device=device)
 
-
+#不要动它
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,maxlen=MAX_LENGTH):
     encoder_hidden = encoder.initHidden()
 
@@ -188,12 +196,13 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 
     return loss.item() / target_length
 
+#不要动它
 def asMinutes(s):
     m = math.floor(s / 60)
     s -= m * 60
     return '%dm %ds' % (m, s)
 
-
+#不要动它
 def timeSince(since, percent):
     now = time.time()
     s = now - since
@@ -201,6 +210,8 @@ def timeSince(since, percent):
     rs = es - s
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
+#n_iters是训练集数据的个数
+#epochs是训练迭代次数
 def trainIters(encoder, decoder, n_iters, print_every=1, plot_every=1, learning_rate=0.01,epochs=10):
     start = time.time()
     plot_losses = []
@@ -239,6 +250,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1, plot_every=1, learning_
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
+#不要动它
 def showPlot(points):
     plt.figure()
     fig, ax = plt.subplots()
@@ -248,6 +260,7 @@ def showPlot(points):
     plt.plot(points)
     plt.show()
 
+#不要动它
 def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
     with torch.no_grad():
         input_tensor = sentence
@@ -278,7 +291,7 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
                 decoded_words.append('<E>')
                 break
             else:
-                print(di,num_dic[topi.item()])
+                # print(di,num_dic[topi.item()])
                 decoded_words.append(num_dic[topi.item()])
 
 
@@ -286,29 +299,35 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
 
         return decoded_words, decoder_attentions[:di + 1]
 
-
-def evaluateRandomly(encoder, decoder, n=1):
+#x_test是测试音频数据
+#y_test是测试数据标签
+#n是测试数据的数量
+def evaluateRandomly(encoder, decoder, x_test,y_test=None,n=1):
     for i in range(n):
-        idx=random.randint(0,19)
-        idx=0
-        print(idx)
-        print('>', x_train[idx].size())
-        print('=', y_train[idx].size())
-        output_words, attentions = evaluate(encoder, decoder, x_train[0])
+        print('>', x_test[i].size())
+        print('=', y_test[i].size())
+        output_words, attentions = evaluate(encoder, decoder, x_test[i])
         output_sentence = ' '.join(output_words)
         print('<', output_sentence)
         print('')
         return output_words
 
+
 hidden_size = 256
+#20是可调参数
 encoder1 = EncoderRNN(20, hidden_size).to(device)
+#38不可调，千万不要动。
 attn_decoder1 = AttnDecoderRNN(hidden_size, 38, dropout_p=0.1).to(device)
+#20是训练集数据的个数，可以小于，但不能大于
+#epochs是可调参数，代表训练次数
 trainIters(encoder1, attn_decoder1, 20,epochs=10)
 
 torch.save(encoder1,'ecnoder1.pkl')
 torch.save(attn_decoder1,'attn_decoder1.pkl')
-
-res=evaluateRandomly(encoder1,  attn_decoder1)
+#x_train和y_train是测试数据。
+#n代表测试多少个测试数据
+res=evaluateRandomly(encoder1, attn_decoder1,x_train,y_train,n=1)
 
 # encoder1=torch.load('ecnoder1.pkl')
 # attn_decoder1=torch.load('attn_decoder1.pkl')
+#

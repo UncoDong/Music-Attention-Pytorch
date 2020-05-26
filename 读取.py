@@ -8,11 +8,14 @@ Return
 
 import pickle
 def GetMusicDic():
-    with open('music_dic.pkl', 'rb') as file:
+    with open('wavDatasets/music_dic.pkl', 'rb') as file:
         music_dic = pickle.load(file)
     return music_dic
 
 
 print(GetMusicDic())
-for x in GetMusicDic().keys():
-    print(x)
+
+
+
+for each in GetMusicDic()['2020-05-26_21_11_44_0']:
+    print(each)
